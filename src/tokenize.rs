@@ -20,9 +20,9 @@ pub enum Token {
 pub fn tokenize(input: &str) -> Result<Vec<Token>, Error> {
     let mut tokens = Vec::new();
 
-    let mut p = input.as_bytes();
+    let mut p = input;
 
-    while let Some(&c) = p.first() {
+    while let Some(&c) = p.as_bytes().first() {
         match c {
             b' ' | b'\t' | b'\n' | b'\r' => {
                 p = &p[1..];
@@ -52,97 +52,168 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, Error> {
                 p = &p[1..];
             }
             b'"' => {
-                p = &p[1..];
-
-                let mut s = String::new();
-                loop {
-                    match p.first() {
-                        Some(b'"') => {
-                            tokens.push(Token::String(s));
-                            p = &p[1..];
-                            break;
-                        }
-                        Some(c) => {
-                            s.push(char::from(*c));
-                            p = &p[1..];
-                        }
-                        None => {
-                            return Err(Error);
-                        }
-                    }
-                }
+                let (cnt, s) = expect_string(p)?;
+                tokens.push(Token::String(s));
+                p = &p[cnt..];
             }
             b'-' | b'0'..=b'9' => {
-                let mut len = 0;
-
-                // minus (optional)
-                if let Some(b'-') = p.get(0) {
-                    len += 1;
-                }
-
-                // int
-                while let Some(b'0'..=b'9') = p.get(len) {
-                    len += 1;
-                }
-
-                // frac (optional)
-                if let Some(b'.') = p.get(len) {
-                    len += 1;
-
-                    while let Some(b'0'..=b'9') = p.get(len) {
-                        len += 1;
-                    }
-                }
-
-                // exp (optional)
-                if let Some(b'e') = p.get(len) {
-                    len += 1;
-
-                    if let Some(b'+' | b'-') = p.get(len) {
-                        len += 1;
-                    }
-
-                    while let Some(b'0'..=b'9') = p.get(len) {
-                        len += 1;
-                    }
-                }
-
-                let s = str::from_utf8(&p[..len]).unwrap();
-                let n = s.parse().unwrap();
+                let (cnt, n) = expect_number(p)?;
                 tokens.push(Token::Number(n));
-                p = &p[len..];
+                p = &p[cnt..];
             }
             b'f' => {
-                if let Some(b"false") = &p.get(0..5) {
-                    tokens.push(Token::False);
-                    p = &p[5..];
-                } else {
-                    return Err(Error);
-                }
+                expect_false(p)?;
+                tokens.push(Token::False);
+                p = &p[5..];
             }
             b'n' => {
-                if let Some(b"null") = &p.get(0..4) {
-                    tokens.push(Token::Null);
-                    p = &p[4..];
-                } else {
-                    return Err(Error);
-                }
+                expect_null(p)?;
+                tokens.push(Token::Null);
+                p = &p[4..];
             }
             b't' => {
-                if let Some(b"true") = &p.get(0..4) {
-                    tokens.push(Token::True);
-                    p = &p[4..];
-                } else {
-                    return Err(Error);
-                }
+                expect_true(p)?;
+                tokens.push(Token::True);
+                p = &p[4..];
             }
             _ => {
-                return Err(Error);
+                let c = p.chars().next().unwrap();
+                return Err(Error::UnexpectedToken(c));
             }
         }
     }
 
     return Ok(tokens);
+}
+
+fn expect_number(input: &str) -> Result<(usize, f64), Error> {
+    let mut iter = input.chars().peekable();
+    let mut cnt = 0;
+
+    // minus (optional)
+    if let Some('-') = iter.peek() {
+        iter.next();
+        cnt += 1;
+    }
+
+    // int
+    while let Some('0'..='9') = iter.peek() {
+        iter.next();
+        cnt += 1;
+    }
+
+    // frac (optional)
+    if let Some('.') = iter.peek() {
+        iter.next();
+        cnt += 1;
+
+        while let Some('0'..='9') = iter.peek() {
+            iter.next();
+            cnt += 1;
+        }
+    }
+
+    // exp (optional)
+    if let Some('e') = iter.peek() {
+        iter.next();
+        cnt += 1;
+
+        if let Some('+' | '-') = iter.peek() {
+            iter.next();
+            cnt += 1;
+        }
+
+        while let Some('0'..='9') = iter.peek() {
+            iter.next();
+            cnt += 1;
+        }
+    }
+
+    let s = &input[..cnt];
+    let n = s.parse().unwrap();
+
+    Ok((cnt, n))
+}
+
+fn expect_string(input: &str) -> Result<(usize, String), Error> {
+    let mut iter = input.chars();
+    let mut cnt = 0;
+    match iter.next() {
+        Some(t) if t != '"' => {
+            return Err(Error::UnexpectedToken(t));
+        }
+        None => {
+            return Err(Error::UnexpectedEnd);
+        }
+        _ => {
+            cnt += 1;
+        }
+    }
+
+    let mut s = String::new();
+    loop {
+        match iter.next() {
+            Some('"') => {
+                cnt += 1;
+                return Ok((cnt, s));
+            }
+            Some(c) => {
+                cnt += c.len_utf8();
+                s.push(c);
+            }
+            None => {
+                return Err(Error::UnexpectedEnd);
+            }
+        }
+    }
+}
+
+fn expect_null(s: &str) -> Result<(), Error> {
+    let mut iter = s.chars();
+    for c in ['n', 'u', 'l', 'l'] {
+        match iter.next() {
+            Some(t) if t != c => {
+                return Err(Error::UnexpectedToken(t));
+            }
+            None => {
+                return Err(Error::UnexpectedEnd);
+            }
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
+fn expect_false(s: &str) -> Result<(), Error> {
+    let mut iter = s.chars();
+    for c in ['f', 'a', 'l', 's', 'e'] {
+        match iter.next() {
+            Some(t) if t != c => {
+                return Err(Error::UnexpectedToken(t));
+            }
+            None => {
+                return Err(Error::UnexpectedEnd);
+            }
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
+fn expect_true(s: &str) -> Result<(), Error> {
+    let mut iter = s.chars();
+    for c in ['t', 'r', 'u', 'e'] {
+        match iter.next() {
+            Some(t) if t != c => {
+                return Err(Error::UnexpectedToken(t));
+            }
+            None => {
+                return Err(Error::UnexpectedEnd);
+            }
+            _ => {}
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]

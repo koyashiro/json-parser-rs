@@ -1,2 +1,5 @@
 #[derive(Debug, PartialEq)]
-pub struct Error;
+pub enum Error {
+    UnexpectedEnd,
+    UnexpectedToken(char),
+}
