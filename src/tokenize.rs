@@ -1,3 +1,5 @@
+use std::str;
+
 use crate::error::Error;
 
 #[derive(Debug, PartialEq)]
@@ -18,51 +20,50 @@ pub enum Token {
 pub fn tokenize(input: &str) -> Result<Vec<Token>, Error> {
     let mut tokens = Vec::new();
 
-    let chars = input.chars().collect::<Vec<char>>();
-    let mut p = chars.as_slice();
+    let mut p = input.as_bytes();
 
-    while let Some(c) = p.first() {
+    while let Some(&c) = p.first() {
         match c {
-            ' ' | '\t' | '\n' | '\r' => {
+            b' ' | b'\t' | b'\n' | b'\r' => {
                 p = &p[1..];
             }
-            '[' => {
+            b'[' => {
                 tokens.push(Token::BeginArray);
                 p = &p[1..];
             }
-            '{' => {
+            b'{' => {
                 tokens.push(Token::BeginObject);
                 p = &p[1..];
             }
-            ']' => {
+            b']' => {
                 tokens.push(Token::EndArray);
                 p = &p[1..];
             }
-            '}' => {
+            b'}' => {
                 tokens.push(Token::EndObject);
                 p = &p[1..];
             }
-            ':' => {
+            b':' => {
                 tokens.push(Token::NameSeparator);
                 p = &p[1..];
             }
-            ',' => {
+            b',' => {
                 tokens.push(Token::ValueSeparator);
                 p = &p[1..];
             }
-            '"' => {
+            b'"' => {
                 p = &p[1..];
 
                 let mut s = String::new();
                 loop {
                     match p.first() {
-                        Some('"') => {
+                        Some(b'"') => {
                             tokens.push(Token::String(s));
                             p = &p[1..];
                             break;
                         }
                         Some(c) => {
-                            s.push(*c);
+                            s.push(char::from(*c));
                             p = &p[1..];
                         }
                         None => {
@@ -71,65 +72,64 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, Error> {
                     }
                 }
             }
-            '-' | '0'..='9' => {
-                let mut s = String::new();
+            b'-' | b'0'..=b'9' => {
+                let mut len = 0;
 
-                if let Some(c @ '-') = p.first() {
-                    s.push(*c);
-                    p = &p[1..];
+                // minus (optional)
+                if let Some(b'-') = p.get(0) {
+                    len += 1;
                 }
 
-                while let Some(c @ '0'..='9') = p.first() {
-                    s.push(*c);
-                    p = &p[1..];
+                // int
+                while let Some(b'0'..=b'9') = p.get(len) {
+                    len += 1;
                 }
 
-                if let Some(c @ '.') = p.first() {
-                    s.push(*c);
-                    p = &p[1..];
+                // frac (optional)
+                if let Some(b'.') = p.get(len) {
+                    len += 1;
 
-                    while let Some(c @ '0'..='9') = p.first() {
-                        s.push(*c);
-                        p = &p[1..];
+                    while let Some(b'0'..=b'9') = p.get(len) {
+                        len += 1;
                     }
                 }
 
-                if let Some(c @ 'e') = p.first() {
-                    s.push(*c);
-                    p = &p[1..];
+                // exp (optional)
+                if let Some(b'e') = p.get(len) {
+                    len += 1;
 
-                    if let Some(c @ '-') = p.first() {
-                        s.push(*c);
-                        p = &p[1..];
+                    if let Some(b'+' | b'-') = p.get(len) {
+                        len += 1;
                     }
 
-                    while let Some(c @ '0'..='9') = p.first() {
-                        s.push(*c);
-                        p = &p[1..];
+                    while let Some(b'0'..=b'9') = p.get(len) {
+                        len += 1;
                     }
                 }
 
+                let s = str::from_utf8(&p[..len]).unwrap();
                 let n = s.parse().unwrap();
                 tokens.push(Token::Number(n));
+                p = &p[len..];
             }
-            'f' => {
-                if let Some(['f', 'a', 'l', 's', 'e']) = &p.get(0..5) {
+            b'f' => {
+                if let Some(b"false") = &p.get(0..5) {
                     tokens.push(Token::False);
                     p = &p[5..];
                 } else {
                     return Err(Error);
                 }
             }
-            'n' => {
-                if let Some(['n', 'u', 'l', 'l']) = &p.get(0..4) {
+            b'n' => {
+                if let Some(b"null") = &p.get(0..4) {
                     tokens.push(Token::Null);
                     p = &p[4..];
                 } else {
                     return Err(Error);
                 }
             }
-            't' => {
-                if let Some(['t', 'r', 'u', 'e']) = &p.get(0..4) {
+            b't' => {
+                if let Some(b"true") = &p.get(0..4) {
                     tokens.push(Token::True);
                     p = &p[4..];
                 } else {
