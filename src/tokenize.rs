@@ -1,4 +1,7 @@
-use std::str;
+use std::{
+    fmt::{Display, Error as FmtError, Formatter},
+    str,
+};
 
 use crate::error::Error;
 
@@ -15,6 +18,24 @@ pub enum Token<'a> {
     True,
     Number(f64),
     String(&'a str),
+}
+
+impl Display for Token<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), FmtError> {
+        match self {
+            Self::BeginArray => write!(f, "["),
+            Self::BeginObject => write!(f, "{{"),
+            Self::EndArray => write!(f, "]"),
+            Self::EndObject => write!(f, "}}"),
+            Self::NameSeparator => write!(f, ":"),
+            Self::ValueSeparator => write!(f, ","),
+            Self::False => write!(f, "false"),
+            Self::Null => write!(f, "null"),
+            Self::True => write!(f, "true"),
+            Self::Number(n) => write!(f, "{n}"),
+            Self::String(s) => write!(f, "{s}"),
+        }
+    }
 }
 
 pub fn tokenize(input: &str) -> Result<Vec<Token>, Error> {
@@ -208,6 +229,21 @@ fn expect_true(s: &str) -> Result<(), Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn display_test() {
+        assert_eq!(&Token::BeginArray.to_string(), "[");
+        assert_eq!(&Token::BeginObject.to_string(), "{");
+        assert_eq!(&Token::EndArray.to_string(), "]");
+        assert_eq!(&Token::EndObject.to_string(), "}");
+        assert_eq!(&Token::NameSeparator.to_string(), ":");
+        assert_eq!(&Token::ValueSeparator.to_string(), ",");
+        assert_eq!(&Token::False.to_string(), "false");
+        assert_eq!(&Token::Null.to_string(), "null");
+        assert_eq!(&Token::True.to_string(), "true");
+        assert_eq!(&Token::Number(123.45).to_string(), "123.45");
+        assert_eq!(&Token::String("value").to_string(), "value");
+    }
 
     #[test]
     fn it_works() {
