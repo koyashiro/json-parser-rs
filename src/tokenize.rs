@@ -3,7 +3,7 @@ use std::str;
 use crate::error::Error;
 
 #[derive(Debug, PartialEq)]
-pub enum Token {
+pub enum Token<'a> {
     BeginArray,
     BeginObject,
     EndArray,
@@ -14,7 +14,7 @@ pub enum Token {
     Null,
     True,
     Number(f64),
-    String(String),
+    String(&'a str),
 }
 
 pub fn tokenize(input: &str) -> Result<Vec<Token>, Error> {
@@ -83,7 +83,7 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, Error> {
         }
     }
 
-    return Ok(tokens);
+    Ok(tokens)
 }
 
 fn expect_number(input: &str) -> Result<(usize, f64), Error> {
@@ -135,7 +135,7 @@ fn expect_number(input: &str) -> Result<(usize, f64), Error> {
     Ok((cnt, n))
 }
 
-fn expect_string(input: &str) -> Result<(usize, String), Error> {
+fn expect_string(input: &str) -> Result<(usize, &str), Error> {
     let mut iter = input.chars();
     let mut cnt = 0;
     match iter.next() {
@@ -150,16 +150,15 @@ fn expect_string(input: &str) -> Result<(usize, String), Error> {
         }
     }
 
-    let mut s = String::new();
     loop {
         match iter.next() {
             Some('"') => {
+                let s = &input[1..cnt];
                 cnt += 1;
                 return Ok((cnt, s));
             }
             Some(c) => {
                 cnt += c.len_utf8();
-                s.push(c);
             }
             None => {
                 return Err(Error::UnexpectedEnd);
@@ -265,10 +264,7 @@ mod tests {
             tokenize("-123.45e-123"),
             Ok(vec![Token::Number(-123.45e-123f64)])
         );
-        assert_eq!(
-            tokenize("\"string\""),
-            Ok(vec![Token::String("string".to_string())])
-        );
+        assert_eq!(tokenize("\"string\""), Ok(vec![Token::String("string")]));
 
         assert_eq!(tokenize("[]"), Ok(vec![Token::BeginArray, Token::EndArray]));
         assert_eq!(
@@ -295,7 +291,7 @@ mod tests {
                 Token::ValueSeparator,
                 Token::Number(12345f64),
                 Token::ValueSeparator,
-                Token::String("string".to_string()),
+                Token::String("string"),
                 Token::ValueSeparator,
                 Token::BeginArray,
                 Token::EndArray,
@@ -320,9 +316,9 @@ mod tests {
             ),
             Ok(vec![
                 Token::BeginObject,
-                Token::String("key".to_string()),
+                Token::String("key"),
                 Token::NameSeparator,
-                Token::String("value".to_string()),
+                Token::String("value"),
                 Token::EndObject
             ])
         );
@@ -342,32 +338,32 @@ mod tests {
             ),
             Ok(vec![
                 Token::BeginObject,
-                Token::String("key0".to_string()),
+                Token::String("key0"),
                 Token::NameSeparator,
                 Token::False,
                 Token::ValueSeparator,
-                Token::String("key1".to_string()),
+                Token::String("key1"),
                 Token::NameSeparator,
                 Token::Null,
                 Token::ValueSeparator,
-                Token::String("key2".to_string()),
+                Token::String("key2"),
                 Token::NameSeparator,
                 Token::True,
                 Token::ValueSeparator,
-                Token::String("key3".to_string()),
+                Token::String("key3"),
                 Token::NameSeparator,
                 Token::Number(12345f64),
                 Token::ValueSeparator,
-                Token::String("key4".to_string()),
+                Token::String("key4"),
                 Token::NameSeparator,
-                Token::String("string".to_string()),
+                Token::String("string"),
                 Token::ValueSeparator,
-                Token::String("key5".to_string()),
+                Token::String("key5"),
                 Token::NameSeparator,
                 Token::BeginArray,
                 Token::EndArray,
                 Token::ValueSeparator,
-                Token::String("key6".to_string()),
+                Token::String("key6"),
                 Token::NameSeparator,
                 Token::BeginObject,
                 Token::EndObject,
