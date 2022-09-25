@@ -78,7 +78,7 @@ pub fn tokenize(input: &str) -> Result<Vec<Token>, Error> {
             }
             _ => {
                 let c = p.chars().next().unwrap();
-                return Err(Error::UnexpectedToken(c));
+                return Err(Error::UnexpectedChar(c));
             }
         }
     }
@@ -139,15 +139,9 @@ fn expect_string(input: &str) -> Result<(usize, &str), Error> {
     let mut iter = input.chars();
     let mut cnt = 0;
     match iter.next() {
-        Some(t) if t != '"' => {
-            return Err(Error::UnexpectedToken(t));
-        }
-        None => {
-            return Err(Error::UnexpectedEnd);
-        }
-        _ => {
-            cnt += 1;
-        }
+        Some(c) if c != '"' => return Err(Error::UnexpectedChar(c)),
+        Some(_) => cnt += 1,
+        None => return Err(Error::UnexpectedEnd),
     }
 
     loop {
@@ -157,22 +151,18 @@ fn expect_string(input: &str) -> Result<(usize, &str), Error> {
                 cnt += 1;
                 return Ok((cnt, s));
             }
-            Some(c) => {
-                cnt += c.len_utf8();
-            }
-            None => {
-                return Err(Error::UnexpectedEnd);
-            }
+            Some(c) => cnt += c.len_utf8(),
+            None => return Err(Error::UnexpectedEnd),
         }
     }
 }
 
 fn expect_null(s: &str) -> Result<(), Error> {
     let mut iter = s.chars();
-    for c in ['n', 'u', 'l', 'l'] {
+    for e in ['n', 'u', 'l', 'l'] {
         match iter.next() {
-            Some(t) if t != c => {
-                return Err(Error::UnexpectedToken(t));
+            Some(c) if c != e => {
+                return Err(Error::UnexpectedChar(c));
             }
             None => {
                 return Err(Error::UnexpectedEnd);
@@ -185,10 +175,10 @@ fn expect_null(s: &str) -> Result<(), Error> {
 
 fn expect_false(s: &str) -> Result<(), Error> {
     let mut iter = s.chars();
-    for c in ['f', 'a', 'l', 's', 'e'] {
+    for e in ['f', 'a', 'l', 's', 'e'] {
         match iter.next() {
-            Some(t) if t != c => {
-                return Err(Error::UnexpectedToken(t));
+            Some(c) if c != e => {
+                return Err(Error::UnexpectedChar(c));
             }
             None => {
                 return Err(Error::UnexpectedEnd);
@@ -201,10 +191,10 @@ fn expect_false(s: &str) -> Result<(), Error> {
 
 fn expect_true(s: &str) -> Result<(), Error> {
     let mut iter = s.chars();
-    for c in ['t', 'r', 'u', 'e'] {
+    for e in ['t', 'r', 'u', 'e'] {
         match iter.next() {
-            Some(t) if t != c => {
-                return Err(Error::UnexpectedToken(t));
+            Some(c) if c != e => {
+                return Err(Error::UnexpectedChar(c));
             }
             None => {
                 return Err(Error::UnexpectedEnd);

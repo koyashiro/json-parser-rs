@@ -1,5 +1,8 @@
-#[derive(Eq, Debug, PartialEq)]
-pub enum Error {
+use crate::tokenize::Token;
+
+#[derive(Debug, PartialEq)]
+pub enum Error<'a> {
     UnexpectedEnd,
-    UnexpectedToken(char),
+    UnexpectedChar(char),
+    UnexpectedToken(&'a Token<'a>),
 }
