@@ -2,12 +2,12 @@ use std::collections::HashMap;
 
 use crate::{error::Error, json::Value, tokenize::Token};
 
-pub fn parse<'a>(tokens: &'a [Token]) -> Result<Value, Error<'a>> {
+pub fn parse(tokens: &[Token]) -> Result<Value, Error> {
     let mut p = tokens;
     parse_value(&mut p)
 }
 
-fn parse_value<'a>(tokens: &mut &'a [Token]) -> Result<Value, Error<'a>> {
+fn parse_value(tokens: &mut &[Token]) -> Result<Value, Error> {
     match tokens.first() {
         Some(Token::Null) => {
             *tokens = &tokens[1..];
@@ -31,15 +31,15 @@ fn parse_value<'a>(tokens: &mut &'a [Token]) -> Result<Value, Error<'a>> {
         }
         Some(Token::BeginObject) => parse_object(tokens),
         Some(Token::BeginArray) => parse_array(tokens),
-        Some(t) => Err(Error::UnexpectedToken(t)),
+        Some(t) => Err(Error::UnexpectedToken(t.to_string())),
         None => Err(Error::UnexpectedEnd),
     }
 }
 
-fn parse_object<'a>(tokens: &mut &'a [Token]) -> Result<Value, Error<'a>> {
+fn parse_object(tokens: &mut &[Token]) -> Result<Value, Error> {
     match tokens.first() {
         Some(Token::BeginObject) => *tokens = &tokens[1..],
-        Some(t) => return Err(Error::UnexpectedToken(t)),
+        Some(t) => return Err(Error::UnexpectedToken(t.to_string())),
         None => return Err(Error::UnexpectedEnd),
     }
 
@@ -54,7 +54,7 @@ fn parse_object<'a>(tokens: &mut &'a [Token]) -> Result<Value, Error<'a>> {
         if !o.is_empty() {
             match tokens.first() {
                 Some(Token::ValueSeparator) => *tokens = &tokens[1..],
-                Some(t) => return Err(Error::UnexpectedToken(t)),
+                Some(t) => return Err(Error::UnexpectedToken(t.to_string())),
                 None => return Err(Error::UnexpectedEnd),
             }
         }
@@ -64,13 +64,13 @@ fn parse_object<'a>(tokens: &mut &'a [Token]) -> Result<Value, Error<'a>> {
                 *tokens = &tokens[1..];
                 k.to_string()
             }
-            Some(t) => return Err(Error::UnexpectedToken(t)),
+            Some(t) => return Err(Error::UnexpectedToken(t.to_string())),
             None => return Err(Error::UnexpectedEnd),
         };
 
         match tokens.first() {
             Some(Token::NameSeparator) => *tokens = &tokens[1..],
-            Some(t) => return Err(Error::UnexpectedToken(t)),
+            Some(t) => return Err(Error::UnexpectedToken(t.to_string())),
             None => return Err(Error::UnexpectedEnd),
         }
 
@@ -80,10 +80,10 @@ fn parse_object<'a>(tokens: &mut &'a [Token]) -> Result<Value, Error<'a>> {
     }
 }
 
-fn parse_array<'a>(tokens: &mut &'a [Token]) -> Result<Value, Error<'a>> {
+fn parse_array(tokens: &mut &[Token]) -> Result<Value, Error> {
     match tokens.first() {
         Some(Token::BeginArray) => *tokens = &tokens[1..],
-        Some(t) => return Err(Error::UnexpectedToken(t)),
+        Some(t) => return Err(Error::UnexpectedToken(t.to_string())),
         None => return Err(Error::UnexpectedEnd),
     }
 
@@ -97,7 +97,7 @@ fn parse_array<'a>(tokens: &mut &'a [Token]) -> Result<Value, Error<'a>> {
         if !a.is_empty() {
             match tokens.first() {
                 Some(Token::ValueSeparator) => *tokens = &tokens[1..],
-                Some(t) => return Err(Error::UnexpectedToken(t)),
+                Some(t) => return Err(Error::UnexpectedToken(t.to_string())),
                 None => return Err(Error::UnexpectedEnd),
             }
         }

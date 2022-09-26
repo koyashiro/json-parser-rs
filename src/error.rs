@@ -3,16 +3,14 @@ use std::{
     fmt::{Display, Error as FmtError, Formatter},
 };
 
-use crate::tokenize::Token;
-
-#[derive(Debug, PartialEq)]
-pub enum Error<'a> {
+#[derive(Eq, Debug, PartialEq)]
+pub enum Error {
     UnexpectedEnd,
     UnexpectedChar(char),
-    UnexpectedToken(&'a Token<'a>),
+    UnexpectedToken(String),
 }
 
-impl Display for Error<'_> {
+impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), FmtError> {
         match self {
             Self::UnexpectedEnd => write!(f, "unexpected end"),
@@ -22,10 +20,12 @@ impl Display for Error<'_> {
     }
 }
 
-impl StdError for Error<'_> {}
+impl StdError for Error {}
 
 #[cfg(test)]
 mod tests {
+    use crate::tokenize::Token;
+
     use super::*;
 
     #[test]
@@ -36,7 +36,7 @@ mod tests {
             "unexpected token 'a'"
         );
         assert_eq!(
-            &Error::UnexpectedToken(&Token::BeginArray).to_string(),
+            &Error::UnexpectedToken(Token::BeginArray.to_string()).to_string(),
             "unexpected token '['"
         );
     }
