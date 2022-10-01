@@ -4,7 +4,11 @@ use crate::{error::Error, json::Value, tokenize::Token};
 
 pub fn parse(tokens: &[Token]) -> Result<Value, Error> {
     let mut p = tokens;
-    parse_value(&mut p)
+    let value = parse_value(&mut p)?;
+    if !p.is_empty() {
+        return Err(Error::UnexpectedNonWhitespace);
+    }
+    Ok(value)
 }
 
 fn parse_value(tokens: &mut &[Token]) -> Result<Value, Error> {

@@ -8,6 +8,7 @@ pub enum Error {
     UnexpectedEnd,
     UnexpectedChar(char),
     UnexpectedToken(String),
+    UnexpectedNonWhitespace,
 }
 
 impl Display for Error {
@@ -16,6 +17,7 @@ impl Display for Error {
             Self::UnexpectedEnd => write!(f, "unexpected end"),
             Self::UnexpectedChar(c) => write!(f, "unexpected token '{c}'"),
             Self::UnexpectedToken(t) => write!(f, "unexpected token '{t}'"),
+            Self::UnexpectedNonWhitespace => write!(f, "unexpected whitespace"),
         }
     }
 }
